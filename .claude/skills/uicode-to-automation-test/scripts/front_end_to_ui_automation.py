@@ -534,13 +534,27 @@ class VueParser:
         # 4. 根据元素类型生成选择器
         if tag == 'button' or role == 'button':
             if text:
-                return f"getByRole('button', {{ name: '{text}' }})"
-            return "getByRole('button')"
-        
+                return f"getByRole('button', {{ name: '{text}', exact: true }})"
+            # ✅ 优先检查 id/name 属性作为回退定位器
+            id_match = re.search(r'id\s*=\s*["\']([^"\']+)["\']', attributes)
+            if id_match:
+                return f"locator('#{id_match.group(1)}')"
+            class_match = re.search(r'class\s*=\s*["\']([^"\']+)["\']', attributes)
+            if class_match:
+                return f"locator('{tag}.{class_match.group(1).split()[0]}')"
+            return f"locator('{tag}')"
+
         elif tag == 'a':
             if text:
                 return f"getByRole('link', {{ name: '{text}' }})"
-            return "getByRole('link')"
+            # ✅ <a> 无文本时，用 href 或 class 定位
+            href_match = re.search(r'href\s*=\s*["\']([^"\']+)["\']', attributes)
+            if href_match:
+                return f"locator('a[href=\"{href_match.group(1)}\"]')"
+            testid_match_link = re.search(r'data-testid\s*=\s*["\']([^"\']+)["\']', attributes)
+            if testid_match_link:
+                return f"getByTestId('{testid_match_link.group(1)}')"
+            return f"locator('a')"
         
         elif tag == 'input':
             input_type_match = re.search(r'type\s*=\s*["\']([^"\']+)["\']', attributes)
@@ -757,13 +771,13 @@ class ReactParser:
 
         if tag == 'button' or role == 'button':
             if text:
-                return f"getByRole('button', {{ name: '{text}' }})"
-            return "getByRole('button')"
+                return f"getByRole('button', {{ name: '{text}', exact: true }})"
+            return f"locator('{tag}')"
 
         elif tag == 'a':
             if text:
                 return f"getByRole('link', {{ name: '{text}' }})"
-            return "getByRole('link')"
+            return f"locator('a')"
 
         elif tag == 'input':
             id_match = re.search(r'id\s*=\s*["\']([^"\']+)["\']', attributes)
@@ -2229,6 +2243,10 @@ class PlaywrightGenerator:
                     locator_name = testid.replace('-', '_').replace('.', '_')
             
             method_name = f"{action}_{locator_name}" if locator_name else f"{action}_element"
+
+            # ✅ 去重过滤：如果 locator_name 为 None（无法解析），跳过生成测试方法
+            if not locator_name:
+                continue
             
             lines.extend([
                 f"    def {test_name_en}(self):",
