@@ -22,9 +22,14 @@
 - 全局skills存储位置: `D:\code\skills`
 
 ## Project Context
-- 项目路径: d:\code\python_project\面试\booster
-- Python版本: 3.12
-- 主要依赖: langchain, llama-index
+- **Main project**: Vue to Playwright Test Generator
+- Project path: `d:\code\python_project\ui-automation-generator`
+- Python version: 3.12
+- Core functionality: Generates Playwright tests from Vue components
+- Documentation files:
+  - `claude.md` - Quick reference for Claude Code
+  - `CODE_WIKI.md` - Comprehensive code documentation
+  - `AGENTS.md` - Skills configuration
 - 全局Skills存储结构:
   ```
   D:\code\skills\
@@ -35,3 +40,5 @@
   ```
 - 本项目自定义Skills:
   - skill-configurator - 用于快速配置新项目的Agents环境（存储在项目本地.skills目录）
+  - uicode-to-automation-test - 从Vue/React组件生成Playwright自动化测试（存储在.claude/skills/），已修复Python import路径、事件去重、测试命名、移植了智能断言生成器，整合了playwright-skill完整指南
+- playwright-skill - 通过junction链接到.claude/skills/playwright-skill/，作为uicode-to-automation-test的引用依赖
