@@ -702,11 +702,22 @@ class ReactParser:
             element_tag = match.group(1)
             attributes = match.group(2)
             inner_content = match.group(3) or ''
-            element_text = re.sub(r'<[^>]+>', '', inner_content).strip()
+            # ✅ 去除 JSX 表达式 { ... }，只提取纯文本
+            clean_text = re.sub(r'\{[^}]*\}', '', inner_content)
+            element_text = re.sub(r'<[^>]+>', '', clean_text).strip()
 
             for event_match in self.EVENT_PATTERN.finditer(attributes):
                 event_type = event_match.group(1)
                 handler = event_match.group(2).strip()
+
+                # ✅ 跳过内嵌的箭头函数 handler（如 onClick={() => setIsSubmitted(false)}）
+                #    这种是匿名回调，不是可测试的业务 handler
+                if '=>' in handler or handler.startswith('(') or '{' in handler:
+                    continue
+
+                # ✅ 跳过 JSX 表达式嵌入的文本（如 {showDetails ? 'x' : 'y'}）
+                if '{' in element_text or '}' in element_text:
+                    element_text = ''
 
                 selector = self._generate_selector(element_tag, attributes, element_text, content)
 
