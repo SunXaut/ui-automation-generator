@@ -1446,7 +1446,7 @@ class PlaywrightGenerator:
             elif action == 'check':
                 assertions.append(('验证已选中', ts(f"expect(page.{selector}).to_be_checked()", f"await expect(page.{selector}).toBeChecked();")))
             elif action == 'fill':
-                assertions.append(('验证输入框值已更新', ts(f"expect(page.{selector}).to_have_value(/.+/)" if language == 'python' else f"await expect(page.{selector}).toHaveValue(/.+/);")))
+                assertions.append(('验证输入框值已更新', ts("expect(locator).to_have_value(re.compile(r'.+'))" if language == 'python' else "await expect(locator).toHaveValue(/.+/);")))
 
         # ============ 表单断言 ============
         elif event.element_tag == 'form' and ('submit' in handler_lower or action == 'submit'):
