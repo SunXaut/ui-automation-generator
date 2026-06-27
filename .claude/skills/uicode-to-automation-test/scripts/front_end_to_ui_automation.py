@@ -359,6 +359,8 @@ class VueParser:
             'dblclick': {'action': 'dblclick', 'description': '双击'},
             'mouseenter': {'action': 'hover', 'description': '鼠标悬停'},
             'mouseleave': {'action': 'hover', 'description': '鼠标离开'},
+            'command': {'action': 'click', 'description': '点击'},
+            'keyup': {'action': 'press', 'description': '按键'},
         }
 
     def parse_router(self, router_file: str) -> list:
@@ -486,8 +488,34 @@ class VueParser:
         return component
 
     def _extract_template(self, content: str) -> Optional[str]:
-        match = re.search(r'<template>(.*?)</template>', content, re.DOTALL)
-        return match.group(1).strip() if match else None
+        """提取最外层 <template> 内容，跳过内部插槽 <template #xxx>。"""
+        start = content.find('<template>')
+        if start == -1:
+            start = content.find('<template ')
+            if start == -1:
+                return None
+        start = content.index('>', start) + 1
+        depth = 1
+        i = start
+        while i < len(content) and depth > 0:
+            # 检查是否为闭合标签
+            close = content.find('</template>', i)
+            open_tag = content.find('<template', i)
+            if close == -1 and open_tag == -1:
+                return None
+            if open_tag != -1 and open_tag < close:
+                # 确保是真正的 <template> 标签（不是注释）
+                if open_tag == 0 or content[open_tag-1] != '/':
+                    # 不是 </template>，而是 <template ...>
+                    # 检查 </template> 前的属性，防止错误匹配插槽
+                    depth += 1
+                i = open_tag + 9
+            else:
+                depth -= 1
+                if depth == 0:
+                    return content[start:close].strip()
+                i = close + 10
+        return None
 
     def _extract_events(self, template: str) -> list:
         """使用 html.parser 解析 Vue 模板，提取事件绑定。
@@ -1202,6 +1230,19 @@ class PlaywrightGenerator:
                             'role': 'testid',
                             'text': testid
                         })
+            elif 'locator' in event.selector:
+                loc_match = re.search(r"locator\('([^']+)'\)", event.selector)
+                if loc_match:
+                    loc_val = loc_match.group(1)
+                    loc_name_clean = re.sub(r'[^a-zA-Z0-9_]', '_', loc_val.replace('.', '_').replace('#', '').replace('-', '_'))
+                    locator_name = to_snake_case(f"{loc_name_clean}_element")
+                    if not any(loc['name'] == locator_name for loc in locators_info):
+                        locators_info.append({
+                            'name': locator_name,
+                            'selector': event.selector,
+                            'role': 'locator',
+                            'text': loc_val
+                        })
         
         lines.append("  readonly page: Page;")
         for loc in locators_info:
@@ -1268,6 +1309,13 @@ class PlaywrightGenerator:
                     testid = testid_match.group(1)
                     locator_name = to_snake_case(testid.replace("-", "_") + "_element")
                     element_text = testid
+            elif 'locator' in event.selector:
+                loc_match = re.search(r"locator\('([^']+)'\)", event.selector)
+                if loc_match:
+                    loc_val = loc_match.group(1)
+                    loc_name_clean = re.sub(r'[^a-zA-Z0-9_]', '_', loc_val.replace('.', '_').replace('#', '').replace('-', '_'))
+                    locator_name = to_snake_case(f"{loc_name_clean}_element")
+                    element_text = loc_val
             
             if locator_name and locator_name not in methods_added:
                 method_name = to_camel_case(f"{action}_{locator_name}")
@@ -1664,6 +1712,19 @@ class PlaywrightGenerator:
                             'role': 'testid',
                             'text': testid
                         })
+            elif 'locator' in event.selector:
+                loc_match = re.search(r"locator\('([^']+)'\)", event.selector)
+                if loc_match:
+                    loc_val = loc_match.group(1)
+                    loc_name_clean = re.sub(r'[^a-zA-Z0-9_]', '_', loc_val.replace('.', '_').replace('#', '').replace('-', '_'))
+                    locator_name = to_snake_case(f"{loc_name_clean}_element")
+                    if not any(loc['name'] == locator_name for loc in locators_info):
+                        locators_info.append({
+                            'name': locator_name,
+                            'selector': event.selector,
+                            'role': 'locator',
+                            'text': loc_val
+                        })
         
         for loc in locators_info:
             lines.append(f"    /** {loc['text']} 元素定位器 */")
@@ -2010,6 +2071,19 @@ class PlaywrightGenerator:
                             'role': 'testid',
                             'text': testid
                         })
+            elif 'locator' in event.selector:
+                loc_match = re.search(r"locator\('([^']+)'\)", event.selector)
+                if loc_match:
+                    loc_val = loc_match.group(1)
+                    loc_name_clean = re.sub(r'[^a-zA-Z0-9_]', '_', loc_val.replace('.', '_').replace('#', '').replace('-', '_'))
+                    locator_name = to_snake_case(f"{loc_name_clean}_element")
+                    if not any(loc['name'] == locator_name for loc in locators_info):
+                        locators_info.append({
+                            'name': locator_name,
+                            'selector': event.selector,
+                            'role': 'locator',
+                            'text': loc_val
+                        })
         
         for loc in locators_info:
             lines.append(f"        # {loc['text']} 元素定位器")
@@ -2065,6 +2139,13 @@ class PlaywrightGenerator:
                     testid = testid_match.group(1)
                     locator_name = to_snake_case(testid.replace("-", "_") + "_element")
                     element_text = testid
+            elif 'locator' in event.selector:
+                loc_match = re.search(r"locator\('([^']+)'\)", event.selector)
+                if loc_match:
+                    loc_val = loc_match.group(1)
+                    loc_name_clean = re.sub(r'[^a-zA-Z0-9_]', '_', loc_val.replace('.', '_').replace('#', '').replace('-', '_'))
+                    locator_name = to_snake_case(f"{loc_name_clean}_element")
+                    element_text = loc_val
             
             if locator_name and locator_name not in methods_added:
                 method_name = to_snake_case(f"{action}_{locator_name}")
@@ -2241,7 +2322,13 @@ class PlaywrightGenerator:
                 if testid_match:
                     testid = testid_match.group(1)
                     locator_name = testid.replace('-', '_').replace('.', '_')
-            
+            elif 'locator' in event.selector:
+                # 从 locator('tag.class') 中提取 tag_class
+                loc_start = event.selector.find("locator('")
+                if loc_start >= 0:
+                    loc_val = event.selector[loc_start + 9:-2]
+                    locator_name = re.sub(r'[^a-zA-Z0-9_]', '_', loc_val.replace('.', '_').replace('#', '').replace('-', '_'))
+
             method_name = f"{action}_{locator_name}" if locator_name else f"{action}_element"
 
             # ✅ 去重过滤：如果 locator_name 为 None（无法解析），跳过生成测试方法
@@ -3305,7 +3392,8 @@ class PlaywrightGenerator:
 
             param_parts = []
             for param in baw_config.parameters:
-                param_parts.append(f"{param['name']}: str = '{param['default']}'")
+                param_name_safe = param['name'].replace('.', '_')
+                param_parts.append(f"{param_name_safe}: str = '{param['default']}'")
 
             lines.append(f"    def execute(self, {', '.join(param_parts)}):")
             lines.append(f'        """')
