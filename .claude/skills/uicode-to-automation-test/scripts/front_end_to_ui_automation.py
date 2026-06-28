@@ -117,16 +117,18 @@ CHINESE_TO_ENGLISH = {
 def translate_to_english(text: str) -> str:
     if text in CHINESE_TO_ENGLISH:
         return CHINESE_TO_ENGLISH[text]
-    
+
     for cn, en in CHINESE_TO_ENGLISH.items():
         if cn in text:
             text = text.replace(cn, en)
-    
+
+    # 移除所有非 ASCII 字符（中文等），仅保留英文、数字、下划线
+    text = re.sub(r'[^\x00-\x7f]', '', text)
     text = re.sub(r'[^\w]', '', text)
-    
+
     if text and text[0].isupper():
         return text[0].lower() + text[1:] if len(text) > 1 else text.lower()
-    
+
     return text.lower() if text else 'element'
 
 
